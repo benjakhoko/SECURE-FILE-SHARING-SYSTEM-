@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% from "_macros.html" import permission_badge %}
+{% block title %}{{ file.original_filename }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">File details</div>
+      <h1>File information</h1>
+      <p>Metadata, encryption state and access control for this file.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('files.list_files') }}">
+        <i class="bi bi-arrow-left me-1"></i>Back to files
+      </a>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="detail-hero">
+      <span class="file-badge"><i class="bi {{ file.original_filename|file_icon }}"></i></span>
+      <div style="min-width:0;">
+        <h1>{{ file.original_filename }}</h1>
+        <div class="meta-row">
+          <span class="badge badge-soft-primary">{{ file.mime_type }}</span>
+          <span class="chip">{{ file.file_size|filesizeformat }}</span>
+          <span class="encryption-chip"><i class="bi bi-lock-fill"></i>{{ file.encryption_status }}</span>
+          {% if my_permission %}{{ permission_badge(my_permission.permission_type, my_permission.is_active) }}{% endif %}
+        </div>
+      </div>
+      <div class="detail-actions">
+        {% if allow_preview and file.mime_type in ['application/pdf', 'image/jpeg', 'image/png', 'text/plain', 'text/csv'] %}
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('files.preview', file_id=file.id) }}" target="_blank" rel="noopener">
+            <i class="bi bi-eye me-1"></i>Preview
+          </a>
+        {% endif %}
+        {% if allow_download %}
+          <a class="btn btn-primary btn-sm" href="{{ url_for('files.download', file_id=file.id) }}">
+            <i class="bi bi-download me-1"></i>Download
+          </a>
+        {% endif %}
+        {% if owner %}
+          <a class="btn btn-soft btn-sm" href="{{ url_for('sharing.share', file_id=file.id) }}">
+            <i class="bi bi-send me-1"></i>Share
+          </a>
+          <form method="post" action="{{ url_for('files.delete', file_id=file.id) }}" data-confirm="Permanently delete '{{ file.original_filename }}'? This cannot be undone." class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-danger-soft btn-sm" type="submit"><i class="bi bi-trash3 me-1"></i>Delete</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div><h2>Metadata</h2><p>Recorded when the file was uploaded</p></div>
+      </div>
+      <div class="card-panel-body">
+        <div class="meta-grid">
+          <div class="meta-item"><label>Original filename</label><span>{{ file.original_filename }}</span></div>
+          <div class="meta-item"><label>Owner</label><span>{{ file.owner.full_name }} (@{{ file.owner.username }})</span></div>
+          <div class="meta-item"><label>File size</label><span>{{ file.file_size|filesizeformat }} ({{ file.file_size }} bytes)</span></div>
+          <div class="meta-item"><label>MIME type</label><span>{{ file.mime_type }}</span></div>
+          <div class="meta-item"><label>Uploaded</label><span>{{ file.uploaded_at|datetime }}</span></div>
+          <div class="meta-item"><label>Encryption status</label><span class="text-success"><i class="bi bi-shield-check me-1"></i>{{ file.encryption_status }} authenticated</span></div>
+          <div class="meta-item"><label>Storage reference</label><span><code>{{ file.stored_filename }}</code></span></div>
+          <div class="meta-item"><label>File ID</label><span>#{{ file.id }}</span></div>
+        </div>
+
+        <div class="security-callout mt-4">
+          <i class="bi bi-shield-lock"></i>
+          <div>
+            <strong>Integrity protected</strong>
+            The ciphertext is authenticated with GCM. If the stored file is altered in any way, decryption fails and the download is blocked.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div><h2>Access control</h2><p>Permissions enforced on the backend</p></div>
+        {% if owner %}
+          <a class="btn btn-sm btn-soft" href="{{ url_for('sharing.permissions', file_id=file.id) }}">Manage</a>
+        {% endif %}
+      </div>
+      <div class="card-panel-body">
+        {% if owner %}
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="cell-muted">Active recipients</span>
+            <strong>{{ file.active_permissions_count }}</strong>
+          </div>
+          {% for perm in permissions[:5] %}
+            <div class="quick-share-item px-0">
+              <span class="avatar" style="width:32px;height:32px;font-size:.62rem;">{{ perm.shared_with.initials }}</span>
+              <div class="quick-share-main">
+                <strong>{{ perm.shared_with.email }}</strong>
+                <span>Shared {{ perm.created_at|datetime }}</span>
+              </div>
+              {{ permission_badge(perm.permission_type, perm.is_active) }}
+            </div>
+          {% else %}
+            <div class="empty-state py-3">
+              <div class="empty-icon"><i class="bi bi-people"></i></div>
+              <h5>Not shared yet</h5>
+              <p>Only you can access this file right now.</p>
+              <a class="btn btn-sm btn-primary" href="{{ url_for('sharing.share', file_id=file.id) }}">Share this file</a>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-2">
+            <div class="profile-avatar" style="width:64px;height:64px;font-size:1.2rem;margin-bottom:.8rem;">{{ file.owner.initials }}</div>
+            <h5 class="mb-1" style="font-size:.92rem;">{{ file.owner.full_name }}</h5>
+            <p class="cell-muted mb-3">Shared this file with you</p>
+            {% if my_permission %}
+              {{ permission_badge(my_permission.permission_type, my_permission.is_active) }}
+              <div class="security-callout mt-3 text-start">
+                <i class="bi bi-info-circle"></i>
+                <div>
+                  <strong>{{ 'Download access' if my_permission.permission_type == 'download' else 'View-only access' }}</strong>
+                  {% if my_permission.permission_type == 'download' %}
+                    You may preview and download this file while the permission remains active.
+                  {% else %}
+                    You may preview this file but downloading is not permitted. The owner can change or revoke access at any time.
+                  {% endif %}
+                </div>
+              </div>
+            {% elif current_user.is_admin %}
+              <div class="security-callout warning text-start">
+                <i class="bi bi-shield-exclamation"></i>
+                <div>
+                  <strong>Administrator oversight view</strong>
+                  You can review metadata, but downloads still require the owner's explicit permission.
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import permission_badge, empty_state %}
+{% block title %}Permissions · {{ file.original_filename }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Access control</div>
+      <h1>Manage Permissions</h1>
+      <p>Review who can access “{{ file.original_filename }}” and revoke access instantly.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('sharing.permissions_index') }}"><i class="bi bi-arrow-left me-1"></i>All files</a>
+      <a class="btn btn-primary" href="{{ url_for('sharing.share', file_id=file.id) }}"><i class="bi bi-send me-1"></i>Share file</a>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body">
+      <div class="file-summary mb-0" style="background:#fff;border:0;padding:0;">
+        <span class="file-badge"><i class="bi {{ file.original_filename|file_icon }}"></i></span>
+        <div style="flex:1;min-width:0;">
+          <strong>{{ file.original_filename }}</strong>
+          <span>{{ file.file_size|filesizeformat }} · uploaded {{ file.uploaded_at|datetime }} · {{ file.encryption_status }}</span>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <span class="chip"><i class="bi bi-people"></i>{{ active_count }} active</span>
+          <span class="chip"><i class="bi bi-list-check"></i>{{ permissions|length }} total</span>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('files.detail', file_id=file.id) }}">Details</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if permissions %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr>
+              <th>Recipient</th>
+              <th>Permission</th>
+              <th>Status</th>
+              <th>Shared</th>
+              <th>Last updated</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for perm in permissions %}
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    <span class="avatar" style="width:30px;height:30px;font-size:.62rem;">{{ perm.shared_with.initials }}</span>
+                    <div>
+                      <span class="name">{{ perm.shared_with.full_name }}</span>
+                      <span class="sub">{{ perm.shared_with.email }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ permission_badge(perm.permission_type, True) }}</td>
+                <td>
+                  {% if perm.is_active %}
+                    <span class="badge badge-soft-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                  {% else %}
+                    <span class="badge badge-soft-secondary"><i class="bi bi-slash-circle me-1"></i>Revoked</span>
+                  {% endif %}
+                </td>
+                <td class="cell-nowrap cell-muted">{{ perm.created_at|datetime }}</td>
+                <td class="cell-nowrap cell-muted">{{ perm.updated_at|datetime }}</td>
+                <td>
+                  <div class="row-actions">
+                    {% if perm.is_active %}
+                      <form method="post" action="{{ url_for('sharing.revoke', permission_id=perm.id) }}" data-confirm="Revoke access for {{ perm.shared_with.email }}? They will lose access immediately." class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-sm btn-danger-soft" type="submit"><i class="bi bi-slash-circle me-1"></i>Revoke</button>
+                      </form>
+                    {% else %}
+                      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('sharing.share', file_id=file.id) }}">Re-share</a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      {{ empty_state('bi-people', 'This file is private', 'No one else can access this file yet. Share it with a registered user to collaborate securely.', url_for('sharing.share', file_id=file.id), 'Share this file') }}
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination, permission_badge, empty_state %}
+{% block title %}Shared By Me{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Outgoing sharing</div>
+      <h1>Shared By Me</h1>
+      <p>Every permission you have granted, including revoked records.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-primary" href="{{ url_for('files.list_files') }}"><i class="bi bi-folder2-open me-1"></i>Select a file</a>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body py-3">
+      <form class="filter-bar" method="get" action="{{ url_for('sharing.shared_by_me') }}">
+        <div class="search-input">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Search by file or recipient email…">
+        </div>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search %}<a class="btn btn-outline-secondary" href="{{ url_for('sharing.shared_by_me') }}">Reset</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if permissions %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Recipient</th>
+              <th>Permission</th>
+              <th>Status</th>
+              <th>Shared</th>
+              <th>Updated</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for perm in permissions %}
+              <tr>
+                <td>
+                  <div class="file-cell">
+                    <span class="file-badge"><i class="bi {{ perm.file.original_filename|file_icon }}"></i></span>
+                    <div>
+                      <a class="file-name" href="{{ url_for('files.detail', file_id=perm.file.id) }}">{{ perm.file.original_filename }}</a>
+                      <span class="file-sub">{{ perm.file.file_size|filesizeformat }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="user-cell">
+                    <span class="avatar" style="width:30px;height:30px;font-size:.62rem;">{{ perm.shared_with.initials }}</span>
+                    <div>
+                      <span class="name">{{ perm.shared_with.full_name }}</span>
+                      <span class="sub">{{ perm.shared_with.email }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ permission_badge(perm.permission_type, True) }}</td>
+                <td>
+                  {% if perm.is_active %}
+                    <span class="badge badge-soft-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                  {% else %}
+                    <span class="badge badge-soft-secondary"><i class="bi bi-slash-circle me-1"></i>Revoked</span>
+                  {% endif %}
+                </td>
+                <td class="cell-nowrap cell-muted">{{ perm.created_at|day }}</td>
+                <td class="cell-nowrap cell-muted">{{ perm.updated_at|day }}</td>
+                <td>
+                  <div class="row-actions">
+                    <a class="btn-icon-soft" href="{{ url_for('sharing.permissions', file_id=perm.file.id) }}" title="Manage"><i class="bi bi-key"></i></a>
+                    {% if perm.is_active %}
+                      <form method="post" action="{{ url_for('sharing.revoke', permission_id=perm.id) }}" data-confirm="Revoke access for {{ perm.shared_with.email }}?" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn-icon-soft danger" type="submit" title="Revoke"><i class="bi bi-slash-circle"></i></button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-3 pb-3">{{ render_pagination(pagination, 'sharing.shared_by_me', {'q': search}) }}</div>
+    {% else %}
+      {{ empty_state('bi-send', 'You have not shared any files' if not search else 'No matching shares',
+        'Open My Files and use the share action to grant someone access.' if not search else 'Try a different search term.',
+        url_for('files.list_files') if not search else url_for('sharing.shared_by_me'), 'Go to My Files' if not search else 'Clear search') }}
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Upload File{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Encrypted upload</div>
+      <h1>Upload File</h1>
+      <p>Files are encrypted in memory before being written to secure storage.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('files.list_files') }}">
+        <i class="bi bi-arrow-left me-1"></i>My files
+      </a>
+    </div>
+  </div>
+
+  <div class="upload-grid">
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div>
+          <h2>Select a document</h2>
+          <p>Maximum size {{ '%.0f'|format(max_mb) }} MB · validated before encryption</p>
+        </div>
+        <span class="encryption-chip"><i class="bi bi-lock-fill"></i>AES-256-GCM</span>
+      </div>
+      <div class="card-panel-body">
+        <form method="post" action="{{ url_for('files.upload') }}" enctype="multipart/form-data" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="file-drop" data-file-drop>
+            {{ form.file(accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.zip") }}
+            <div class="file-drop-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+            <h3>Drop your file here or click to browse</h3>
+            <p>Your file is read, encrypted with a unique nonce, then saved outside the web root.</p>
+            <span class="chip"><i class="bi bi-paperclip"></i> Choose file</span>
+            <div class="selected-file" data-selected-file></div>
+          </div>
+          {% for error in form.file.errors %}
+            <div class="text-danger mt-2" style="font-size:.8rem;">{{ error }}</div>
+          {% endfor %}
+
+          <div class="d-flex align-items-center justify-content-between gap-3 mt-4 flex-wrap">
+            <span class="form-text"><i class="bi bi-shield-lock me-1 text-success"></i>The original file never touches disk unencrypted.</span>
+            {{ form.submit(class="btn btn-primary px-4") }}
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="d-flex flex-column gap-3">
+      <div class="card-panel">
+        <div class="card-panel-header"><h2>Encryption pipeline</h2></div>
+        <div class="card-panel-body">
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex gap-2">
+              <span class="stat-icon" style="width:34px;height:34px;font-size:.85rem;">1</span>
+              <div><strong style="font-size:.82rem;">Content validation</strong><div class="cell-muted">Extension allow-list and file signature checks run on the server.</div></div>
+            </div>
+            <div class="d-flex gap-2">
+              <span class="stat-icon" style="width:34px;height:34px;font-size:.85rem;">2</span>
+              <div><strong style="font-size:.82rem;">Fresh random nonce</strong><div class="cell-muted">A new 96-bit nonce is generated for every single upload.</div></div>
+            </div>
+            <div class="d-flex gap-2">
+              <span class="stat-icon" style="width:34px;height:34px;font-size:.85rem;">3</span>
+              <div><strong style="font-size:.82rem;">Authenticated encryption</strong><div class="cell-muted">AES-256-GCM encrypts and authenticates the file contents.</div></div>
+            </div>
+            <div class="d-flex gap-2">
+              <span class="stat-icon" style="width:34px;height:34px;font-size:.85rem;">4</span>
+              <div><strong style="font-size:.82rem;">Isolated storage</strong><div class="cell-muted">Ciphertext is stored under a random filename in <code>instance/secure_files</code>.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <div class="card-panel-body">
+          <div class="security-callout">
+            <i class="bi bi-info-circle"></i>
+            <div>
+              <strong>Accepted file types</strong>
+              {{ allowed }}
+            </div>
+          </div>
+          <div class="security-callout mt-2">
+            <i class="bi bi-key"></i>
+            <div>
+              <strong>Key management</strong>
+              The encryption key is loaded from the <code>FILE_ENCRYPTION_KEY</code> environment variable and is never stored in the database.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import permission_badge %}
+{% block title %}Share File{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Access control</div>
+      <h1>Share File</h1>
+      <p>Grant a registered user controlled access to this document.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('files.detail', file_id=file.id) }}">
+        <i class="bi bi-arrow-left me-1"></i>File details
+      </a>
+    </div>
+  </div>
+
+  <div class="upload-grid">
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div><h2>Grant access</h2><p>Recipient must already have an account</p></div>
+        <span class="encryption-chip"><i class="bi bi-lock-fill"></i>Permission checked server-side</span>
+      </div>
+      <div class="card-panel-body">
+        <div class="file-summary">
+          <span class="file-badge"><i class="bi {{ file.original_filename|file_icon }}"></i></span>
+          <div>
+            <strong>{{ file.original_filename }}</strong>
+            <span>{{ file.file_size|filesizeformat }} · uploaded {{ file.uploaded_at|day }}</span>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('sharing.share', file_id=file.id) }}" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+            {% for error in form.email.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            <div class="form-text">Enter the email address used for their {{ app_name }} account.</div>
+          </div>
+
+          <div class="mb-2">
+            {{ form.permission_type.label(class="form-label") }}
+            {{ form.permission_type(class="form-select") }}
+          </div>
+
+          <div class="permission-option-grid">
+            <div class="permission-option">
+              <strong><i class="bi bi-eye"></i>View only</strong>
+              The recipient can preview the decrypted file but cannot download it.
+            </div>
+            <div class="permission-option">
+              <strong><i class="bi bi-download"></i>Download</strong>
+              The recipient can preview and download the decrypted file.
+            </div>
+          </div>
+
+          <div class="security-callout mt-3 mb-3">
+            <i class="bi bi-shield-check"></i>
+            <div>
+              <strong>You stay in control</strong>
+              You can change or revoke this permission at any time. Revocation takes effect immediately for every backend request.
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end">
+            {{ form.submit(class="btn btn-primary px-4") }}
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div><h2>Current access</h2><p>Existing recipients for this file</p></div>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('sharing.permissions', file_id=file.id) }}">Manage all</a>
+      </div>
+      <div class="quick-share-list">
+        {% for perm in file.permissions.all() %}
+          <div class="quick-share-item">
+            <span class="avatar" style="width:32px;height:32px;font-size:.62rem;">{{ perm.shared_with.initials }}</span>
+            <div class="quick-share-main">
+              <strong>{{ perm.shared_with.email }}</strong>
+              <span>{{ perm.permission_label }} · {{ 'active' if perm.is_active else 'revoked' }}</span>
+            </div>
+            {{ permission_badge(perm.permission_type, perm.is_active) }}
+          </div>
+        {% else %}
+          <div class="empty-state py-4">
+            <div class="empty-icon"><i class="bi bi-people"></i></div>
+            <h5>Nobody else has access</h5>
+            <p>Use the form to share this file with a registered user.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

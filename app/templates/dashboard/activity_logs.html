@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination, action_badge, empty_state %}
+{% block title %}Activity Logs{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Audit trail</div>
+      <h1>Activity Logs</h1>
+      <p>
+        {% if current_user.is_admin %}
+          System-wide activity across all users, with search and filtering.
+        {% else %}
+          Your personal audit trail. Administrators can see system-wide records.
+        {% endif %}
+      </p>
+    </div>
+    <div class="header-actions">
+      <span class="chip"><i class="bi bi-clipboard-data"></i>{{ pagination.total }} records</span>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body py-3">
+      <form class="filter-bar" method="get" action="{{ url_for('dashboard.activity_logs') }}">
+        <div class="search-input">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Search description, action or IP…">
+        </div>
+        <select class="form-select" name="action" style="max-width:200px;">
+          <option value="">All actions</option>
+          {% for action in actions %}
+            <option value="{{ action }}" {{ 'selected' if selected_action == action }}>{{ action|humanize }}</option>
+          {% endfor %}
+        </select>
+        {% if current_user.is_admin %}
+          <input class="form-control" type="search" name="user" value="{{ user_filter }}" placeholder="Filter by username" style="max-width:190px;">
+        {% endif %}
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search or selected_action or user_filter %}
+          <a class="btn btn-outline-secondary" href="{{ url_for('dashboard.activity_logs') }}">Reset</a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if logs %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              {% if current_user.is_admin %}<th>User</th>{% endif %}
+              <th>Action</th>
+              <th>Description</th>
+              <th>File</th>
+              <th>IP address</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+              <tr>
+                <td class="cell-nowrap cell-muted">{{ log.timestamp|datetime('%d %b %Y, %H:%M:%S') }}</td>
+                {% if current_user.is_admin %}
+                  <td>
+                    {% if log.user %}
+                      <div class="user-cell">
+                        <span class="avatar" style="width:28px;height:28px;font-size:.6rem;">{{ log.user.initials }}</span>
+                        <div><span class="name">{{ log.user.username }}</span><span class="sub">{{ log.user.email }}</span></div>
+                      </div>
+                    {% else %}
+                      <span class="cell-muted">System</span>
+                    {% endif %}
+                  </td>
+                {% endif %}
+                <td>{{ action_badge(log.action) }}</td>
+                <td style="max-width:380px;">{{ log.description }}</td>
+                <td class="cell-nowrap cell-muted">{{ ('#' ~ log.file_id) if log.file_id else '—' }}</td>
+                <td class="cell-nowrap cell-muted"><code style="font-size:.74rem;">{{ log.ip_address or '—' }}</code></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-3 pb-3">
+        {{ render_pagination(pagination, 'dashboard.activity_logs', {'q': search, 'action': selected_action, 'user': user_filter}) }}
+      </div>
+    {% else %}
+      {{ empty_state('bi-clock-history', 'No activity records', 'Actions such as uploads, downloads, shares and logins will be recorded here.') }}
+    {% endif %}
+  </div>
+{% endblock %}

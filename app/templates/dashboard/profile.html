@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Account</div>
+      <h1>My Profile</h1>
+      <p>Manage your identity and credentials.</p>
+    </div>
+  </div>
+
+  <div class="profile-grid">
+    <div class="card-panel profile-identity">
+      <div class="profile-avatar">{{ current_user.initials }}</div>
+      <h2>{{ current_user.full_name }}</h2>
+      <p>{{ current_user.email }}</p>
+      <div class="d-flex justify-content-center gap-2 flex-wrap">
+        <span class="badge badge-soft-{{ 'warning' if current_user.is_admin else 'primary' }}">
+          <i class="bi bi-{{ 'shield-check' if current_user.is_admin else 'person' }} me-1"></i>
+          {{ 'Administrator' if current_user.is_admin else 'Member' }}
+        </span>
+        <span class="badge badge-soft-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+      </div>
+      <div class="profile-facts">
+        <div class="profile-fact"><span>Username</span><strong>@{{ current_user.username }}</strong></div>
+        <div class="profile-fact"><span>Member since</span><strong>{{ current_user.created_at|day }}</strong></div>
+        <div class="profile-fact"><span>Last sign-in</span><strong>{{ current_user.last_login_at|datetime if current_user.last_login_at else '—' }}</strong></div>
+        <div class="profile-fact"><span>Uploaded files</span><strong>{{ current_user.files.count() }}</strong></div>
+      </div>
+      <div class="security-callout mt-3 text-start">
+        <i class="bi bi-shield-lock"></i>
+        <div><strong>Account security</strong>Passwords are stored only as salted Werkzeug hashes.</div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-column gap-3">
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <div><h2>Profile information</h2><p>Update your display name and contact details</p></div>
+        </div>
+        <div class="card-panel-body">
+          <form method="post" action="{{ url_for('dashboard.profile') }}" novalidate>
+            {{ profile_form.hidden_tag() }}
+            <div class="row g-3">
+              <div class="col-md-6">
+                {{ profile_form.full_name.label(class="form-label") }}
+                {{ profile_form.full_name(class="form-control" + (" is-invalid" if profile_form.full_name.errors else "")) }}
+                {% for error in profile_form.full_name.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ profile_form.username.label(class="form-label") }}
+                {{ profile_form.username(class="form-control" + (" is-invalid" if profile_form.username.errors else "")) }}
+                {% for error in profile_form.username.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+              <div class="col-12">
+                {{ profile_form.email.label(class="form-label") }}
+                {{ profile_form.email(class="form-control" + (" is-invalid" if profile_form.email.errors else "")) }}
+                {% for error in profile_form.email.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+              {{ profile_form.save(class="btn btn-primary") }}
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <div class="card-panel-header">
+          <div><h2>Change password</h2><p>Use a strong, unique password</p></div>
+        </div>
+        <div class="card-panel-body">
+          <form method="post" action="{{ url_for('dashboard.profile') }}" novalidate>
+            {{ password_form.hidden_tag() }}
+            <div class="row g-3">
+              <div class="col-12">
+                {{ password_form.current_password.label(class="form-label") }}
+                {{ password_form.current_password(class="form-control" + (" is-invalid" if password_form.current_password.errors else "")) }}
+                {% for error in password_form.current_password.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ password_form.new_password.label(class="form-label") }}
+                {{ password_form.new_password(class="form-control" + (" is-invalid" if password_form.new_password.errors else "")) }}
+                {% for error in password_form.new_password.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ password_form.confirm_password.label(class="form-label") }}
+                {{ password_form.confirm_password(class="form-control" + (" is-invalid" if password_form.confirm_password.errors else "")) }}
+                {% for error in password_form.confirm_password.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3 gap-2 flex-wrap">
+              <span class="form-text"><i class="bi bi-info-circle me-1"></i>Changing your password records a security event.</span>
+              {{ password_form.change_password(class="btn btn-outline-secondary") }}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

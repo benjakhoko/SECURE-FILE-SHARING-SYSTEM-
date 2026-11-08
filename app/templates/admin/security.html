@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination, empty_state %}
+{% block title %}Security Monitoring{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Administration</div>
+      <h1>Security Monitoring</h1>
+      <p>Failed logins, unauthorized access attempts, permission changes and integrity failures.</p>
+    </div>
+    <div class="header-actions"><span class="chip"><i class="bi bi-shield-exclamation"></i>{{ pagination.total }} events</span></div>
+  </div>
+
+  <div class="security-summary">
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-label">Unauthorized access</span><span class="stat-icon rose"><i class="bi bi-slash-circle"></i></span></div>
+      <p class="stat-value">{{ counts.get('unauthorized_access', 0) }}</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-label">Failed logins</span><span class="stat-icon amber"><i class="bi bi-person-x"></i></span></div>
+      <p class="stat-value">{{ counts.get('login_failed', 0) }}</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-label">Permission changes</span><span class="stat-icon violet"><i class="bi bi-key"></i></span></div>
+      <p class="stat-value">{{ counts.get('permission_change', 0) }}</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-label">Decryption failures</span><span class="stat-icon rose"><i class="bi bi-file-earmark-x"></i></span></div>
+      <p class="stat-value">{{ counts.get('decryption_failure', 0) }}</p>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body py-3">
+      <form class="filter-bar" method="get" action="{{ url_for('admin.security') }}">
+        <div class="search-input">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Search description or IP address…">
+        </div>
+        <select class="form-select" name="type" style="max-width:220px;">
+          <option value="">All event types</option>
+          {% for event_type in event_types %}
+            <option value="{{ event_type }}" {{ 'selected' if selected_type == event_type }}>{{ event_type|humanize }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search or selected_type %}<a class="btn btn-outline-secondary" href="{{ url_for('admin.security') }}">Reset</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if events %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr><th>Timestamp</th><th>Event</th><th>Description</th><th>User</th><th>IP address</th></tr>
+          </thead>
+          <tbody>
+            {% for event in events %}
+              <tr>
+                <td class="cell-nowrap cell-muted">{{ event.timestamp|datetime('%d %b %Y, %H:%M:%S') }}</td>
+                <td>
+                  <span class="badge badge-soft-{{ {'login_failed':'danger','unauthorized_access':'danger','decryption_failure':'danger','file_validation_failure':'warning','permission_change':'warning','account_deactivated':'danger','account_activated':'success','password_change':'info'}.get(event.event_type, 'secondary') }}">
+                    {{ event.event_type|humanize }}
+                  </span>
+                </td>
+                <td style="max-width:420px;">{{ event.description }}</td>
+                <td>
+                  {% if event.user %}
+                    <div class="user-cell">
+                      <span class="avatar" style="width:28px;height:28px;font-size:.6rem;">{{ event.user.initials }}</span>
+                      <div><span class="name">{{ event.user.username }}</span><span class="sub">{{ event.user.email }}</span></div>
+                    </div>
+                  {% else %}
+                    <span class="cell-muted">System / unknown</span>
+                  {% endif %}
+                </td>
+                <td class="cell-nowrap cell-muted"><code style="font-size:.73rem;">{{ event.ip_address or '—' }}</code></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-3 pb-3">{{ render_pagination(pagination, 'admin.security', {'q': search, 'type': selected_type}) }}</div>
+    {% else %}
+      {{ empty_state('bi-shield-check', 'No security events', 'Nothing matches the current filters. The system has not recorded any alerts for this selection.', url_for('admin.security'), 'Clear filters') }}
+    {% endif %}
+  </div>
+{% endblock %}

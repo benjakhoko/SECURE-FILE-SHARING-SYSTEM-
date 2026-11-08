@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination, permission_badge, empty_state %}
+{% block title %}Shared With Me{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Incoming sharing</div>
+      <h1>Shared With Me</h1>
+      <p>Files other users have granted you access to. Revoked files disappear immediately.</p>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body py-3">
+      <form class="filter-bar" method="get" action="{{ url_for('sharing.shared_with_me') }}">
+        <div class="search-input">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Search shared files…">
+        </div>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search %}<a class="btn btn-outline-secondary" href="{{ url_for('sharing.shared_with_me') }}">Reset</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if permissions %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Owner</th>
+              <th>Size</th>
+              <th>Permission</th>
+              <th>Shared</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for perm in permissions %}
+              <tr>
+                <td>
+                  <div class="file-cell">
+                    <span class="file-badge"><i class="bi {{ perm.file.original_filename|file_icon }}"></i></span>
+                    <div>
+                      <a class="file-name" href="{{ url_for('files.detail', file_id=perm.file.id) }}">{{ perm.file.original_filename }}</a>
+                      <span class="file-sub">{{ perm.file.mime_type }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="user-cell">
+                    <span class="avatar" style="width:30px;height:30px;font-size:.62rem;">{{ perm.owner.initials }}</span>
+                    <div>
+                      <span class="name">{{ perm.owner.full_name }}</span>
+                      <span class="sub">{{ perm.owner.email }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="cell-nowrap cell-muted">{{ perm.file.file_size|filesizeformat }}</td>
+                <td>{{ permission_badge(perm.permission_type, perm.is_active) }}</td>
+                <td class="cell-nowrap cell-muted">{{ perm.created_at|day }}</td>
+                <td>
+                  <div class="row-actions">
+                    {% if perm.file.mime_type in ['application/pdf', 'image/jpeg', 'image/png', 'text/plain', 'text/csv'] %}
+                      <a class="btn-icon-soft" href="{{ url_for('files.preview', file_id=perm.file.id) }}" target="_blank" rel="noopener" title="Preview"><i class="bi bi-eye"></i></a>
+                    {% endif %}
+                    {% if perm.permission_type == 'download' %}
+                      <a class="btn-icon-soft" href="{{ url_for('files.download', file_id=perm.file.id) }}" title="Download"><i class="bi bi-download"></i></a>
+                    {% endif %}
+                    <a class="btn-icon-soft" href="{{ url_for('files.detail', file_id=perm.file.id) }}" title="Details"><i class="bi bi-info-circle"></i></a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-3 pb-3">{{ render_pagination(pagination, 'sharing.shared_with_me', {'q': search}) }}</div>
+    {% else %}
+      {{ empty_state('bi-inbox', 'No files shared with you' if not search else 'No matching files',
+        'When another user grants you access, their file will appear here.' if not search else 'Try a different search term.',
+        url_for('sharing.shared_with_me') if search else None, 'Clear search' if search else None) }}
+    {% endif %}
+  </div>
+{% endblock %}

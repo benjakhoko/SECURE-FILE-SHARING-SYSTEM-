@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination, empty_state %}
+{% block title %}My Files{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">File management</div>
+      <h1>My Files</h1>
+      <p>Every file is encrypted with AES-256-GCM before it touches disk.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-primary" href="{{ url_for('files.upload') }}">
+        <i class="bi bi-cloud-arrow-up me-1"></i>Upload file
+      </a>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body py-3">
+      <form class="filter-bar" method="get" action="{{ url_for('files.list_files') }}">
+        <div class="search-input">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Search by filename or type…">
+        </div>
+        <select class="form-select" name="sort" data-autosubmit style="max-width:180px;">
+          <option value="newest" {{ 'selected' if sort == 'newest' }}>Newest first</option>
+          <option value="oldest" {{ 'selected' if sort == 'oldest' }}>Oldest first</option>
+          <option value="name" {{ 'selected' if sort == 'name' }}>Name A–Z</option>
+          <option value="largest" {{ 'selected' if sort == 'largest' }}>Largest first</option>
+        </select>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search %}<a class="btn btn-outline-secondary" href="{{ url_for('files.list_files') }}">Reset</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if files %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Size</th>
+              <th>Uploaded</th>
+              <th>Encryption</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for file in files %}
+              <tr>
+                <td>
+                  <div class="file-cell">
+                    <span class="file-badge"><i class="bi {{ file.original_filename|file_icon }}"></i></span>
+                    <div>
+                      <a class="file-name" href="{{ url_for('files.detail', file_id=file.id) }}">{{ file.original_filename }}</a>
+                      <span class="file-sub">{{ file.mime_type }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="cell-nowrap">{{ file.file_size|filesizeformat }}</td>
+                <td class="cell-nowrap cell-muted">{{ file.uploaded_at|datetime }}</td>
+                <td><span class="encryption-chip"><i class="bi bi-lock-fill"></i>{{ file.encryption_status }}</span></td>
+                <td>
+                  <div class="row-actions">
+                    <a class="btn-icon-soft" href="{{ url_for('files.preview', file_id=file.id) }}" target="_blank" title="Preview" rel="noopener"><i class="bi bi-eye"></i></a>
+                    <a class="btn-icon-soft" href="{{ url_for('files.download', file_id=file.id) }}" title="Download"><i class="bi bi-download"></i></a>
+                    <a class="btn-icon-soft" href="{{ url_for('sharing.share', file_id=file.id) }}" title="Share"><i class="bi bi-send"></i></a>
+                    <a class="btn-icon-soft" href="{{ url_for('files.detail', file_id=file.id) }}" title="Details"><i class="bi bi-info-circle"></i></a>
+                    <form method="post" action="{{ url_for('files.delete', file_id=file.id) }}" data-confirm="Permanently delete '{{ file.original_filename }}'? This cannot be undone." class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="btn-icon-soft danger" type="submit" title="Delete"><i class="bi bi-trash3"></i></button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if pagination.pages > 1 %}
+        <div class="px-3 pb-3">{{ render_pagination(pagination, 'files.list_files', {'q': search, 'sort': sort}) }}</div>
+      {% endif %}
+    {% else %}
+      {{ empty_state('bi-folder-plus', 'No files here yet' if not search else 'No matching files',
+        'Upload your first document to protect it with authenticated encryption.' if not search else 'Try a different search term.',
+        url_for('files.upload') if not search else url_for('files.list_files'), 'Upload a file' if not search else 'Clear search') }}
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} · {{ app_name }}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% set ep = request.endpoint or '' %}
+<div class="app-shell">
+  <aside class="sidebar" id="appSidebar">
+    <div class="sidebar-brand">
+      <a class="brand-link" href="{{ url_for('dashboard.dashboard') }}">
+        <span class="brand-mark"><i class="bi bi-shield-lock-fill"></i></span>
+        <span class="brand-text">Cipher<span>Vault</span></span>
+      </a>
+    </div>
+
+    <div class="sidebar-section-label">Workspace</div>
+    <nav class="sidebar-nav">
+      <a class="nav-link {{ 'active' if ep == 'dashboard.dashboard' }}" href="{{ url_for('dashboard.dashboard') }}">
+        <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
+      </a>
+      <a class="nav-link {{ 'active' if ep in ['files.list_files', 'files.detail'] }}" href="{{ url_for('files.list_files') }}">
+        <i class="bi bi-folder2-open"></i><span>My Files</span>
+      </a>
+      <a class="nav-link {{ 'active' if ep == 'files.upload' }}" href="{{ url_for('files.upload') }}">
+        <i class="bi bi-cloud-arrow-up"></i><span>Upload Files</span>
+      </a>
+      <a class="nav-link {{ 'active' if ep == 'sharing.shared_with_me' }}" href="{{ url_for('sharing.shared_with_me') }}">
+        <i class="bi bi-inbox"></i><span>Shared With Me</span>
+      </a>
+      <a class="nav-link {{ 'active' if ep == 'sharing.shared_by_me' }}" href="{{ url_for('sharing.shared_by_me') }}">
+        <i class="bi bi-send"></i><span>Shared By Me</span>
+      </a>
+      <a class="nav-link {{ 'active' if ep in ['sharing.permissions_index', 'sharing.permissions', 'sharing.share'] }}" href="{{ url_for('sharing.permissions_index') }}">
+        <i class="bi bi-key"></i><span>Manage Permissions</span>
+      </a>
+      <a class="nav-link {{ 'active' if ep == 'dashboard.activity_logs' }}" href="{{ url_for('dashboard.activity_logs') }}">
+        <i class="bi bi-clock-history"></i><span>Activity Logs</span>
+      </a>
+      <a class="nav-link {{ 'active' if ep == 'dashboard.profile' }}" href="{{ url_for('dashboard.profile') }}">
+        <i class="bi bi-person-gear"></i><span>Profile</span>
+      </a>
+    </nav>
+
+    {% if current_user.is_admin %}
+      <div class="sidebar-section-label">Administration</div>
+      <nav class="sidebar-nav">
+        <a class="nav-link {{ 'active' if ep == 'admin.dashboard' }}" href="{{ url_for('admin.dashboard') }}">
+          <i class="bi bi-speedometer2"></i><span>Admin Dashboard</span>
+        </a>
+        <a class="nav-link {{ 'active' if ep == 'admin.users' }}" href="{{ url_for('admin.users') }}">
+          <i class="bi bi-people"></i><span>User Management</span>
+        </a>
+        <a class="nav-link {{ 'active' if ep == 'admin.files' }}" href="{{ url_for('admin.files') }}">
+          <i class="bi bi-database-lock"></i><span>All Files</span>
+        </a>
+        <a class="nav-link {{ 'active' if ep == 'admin.security' }}" href="{{ url_for('admin.security') }}">
+          <i class="bi bi-shield-exclamation"></i><span>Security Monitoring</span>
+        </a>
+      </nav>
+    {% endif %}
+
+    <div class="sidebar-footer">
+      <div class="secure-note">
+        <i class="bi bi-lock-fill"></i>
+        <div>
+          <strong>Encrypted at rest</strong>
+          <span>AES-256-GCM authenticated</span>
+        </div>
+      </div>
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sidebar-logout">
+          <i class="bi bi-box-arrow-right"></i><span>Logout</span>
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="app-main">
+    <header class="topbar">
+      <button class="icon-btn d-lg-none" id="sidebarToggle" type="button" aria-label="Open navigation">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <form class="topbar-search" method="get" action="{{ url_for('files.list_files') }}">
+        <i class="bi bi-search"></i>
+        <input type="search" name="q" value="{{ request.args.get('q', '') if ep == 'files.list_files' else '' }}" placeholder="Search my files…" aria-label="Search files">
+      </form>
+
+      <div class="topbar-actions">
+        <div class="dropdown">
+          <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-label="Notifications">
+            <i class="bi bi-bell"></i>
+            {% if notifications %}<span class="notification-dot"></span>{% endif %}
+          </button>
+          <div class="dropdown-menu dropdown-menu-end notification-menu">
+            <div class="notification-header">
+              <span>Recent activity</span>
+              <a href="{{ url_for('dashboard.activity_logs') }}">View all</a>
+            </div>
+            {% for item in notifications %}
+              <a class="notification-item" href="{{ url_for('dashboard.activity_logs') }}">
+                <span class="notification-icon"><i class="bi bi-activity"></i></span>
+                <span class="notification-body">
+                  <span class="notification-text">{{ item.description }}</span>
+                  <span class="notification-time">{{ item.timestamp|datetime }}</span>
+                </span>
+              </a>
+            {% else %}
+              <div class="notification-empty">
+                <i class="bi bi-bell-slash"></i>
+                <span>No recent activity</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="dropdown">
+          <button class="user-chip" type="button" data-bs-toggle="dropdown">
+            <span class="avatar">{{ current_user.initials }}</span>
+            <span class="user-meta d-none d-md-flex">
+              <strong>{{ current_user.full_name }}</strong>
+              <small>{{ 'Administrator' if current_user.is_admin else 'Member' }}</small>
+            </span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end profile-menu">
+            <li class="dropdown-header">
+              <strong>{{ current_user.full_name }}</strong>
+              <span>{{ current_user.email }}</span>
+            </li>
+            <li><a class="dropdown-item" href="{{ url_for('dashboard.profile') }}"><i class="bi bi-person"></i>My profile</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('dashboard.activity_logs') }}"><i class="bi bi-clock-history"></i>Activity logs</a></li>
+            {% if current_user.is_admin %}
+              <li><a class="dropdown-item" href="{{ url_for('admin.security') }}"><i class="bi bi-shield-exclamation"></i>Security monitoring</a></li>
+            {% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form method="post" action="{{ url_for('auth.logout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="dropdown-item text-danger" type="submit"><i class="bi bi-box-arrow-right"></i>Logout</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show app-alert" role="alert">
+              <i class="bi {{ {'success':'bi-check-circle-fill','danger':'bi-exclamation-octagon-fill','warning':'bi-exclamation-triangle-fill','info':'bi-info-circle-fill'}.get(category, 'bi-info-circle-fill') }}"></i>
+              <span>{{ message }}</span>
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+      <span>© {{ current_year }} {{ app_name }} · Secure file sharing</span>
+      <span class="footer-badge"><i class="bi bi-shield-lock"></i> AES-256-GCM · CSRF protected</span>
+    </footer>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

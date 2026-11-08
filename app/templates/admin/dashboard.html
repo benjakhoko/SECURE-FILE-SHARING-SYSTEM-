@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% from "_macros.html" import action_badge %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+  <div class="admin-hero">
+    <div>
+      <div class="eyebrow" style="color:#7dd3fc;">Administration</div>
+      <h1>Command center</h1>
+      <p>System-wide oversight of users, encrypted files, sharing and security events.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-light btn-sm" href="{{ url_for('admin.security') }}"><i class="bi bi-shield-exclamation me-1"></i>Security monitoring</a>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('admin.users') }}"><i class="bi bi-people me-1"></i>Manage users</a>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-label">Registered users</span><span class="stat-icon"><i class="bi bi-people"></i></span></div>
+      <p class="stat-value">{{ total_users }}</p>
+      <p class="stat-hint"><strong>{{ active_users }}</strong> currently active</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-label">Encrypted files</span><span class="stat-icon green"><i class="bi bi-database-lock"></i></span></div>
+      <p class="stat-value">{{ total_files }}</p>
+      <p class="stat-hint">{{ total_storage|filesizeformat }} protected storage</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-label">Shared files</span><span class="stat-icon violet"><i class="bi bi-share"></i></span></div>
+      <p class="stat-value">{{ total_shared_files }}</p>
+      <p class="stat-hint">Files with at least one active grant</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-label">Security events</span><span class="stat-icon rose"><i class="bi bi-shield-exclamation"></i></span></div>
+      <p class="stat-value">{{ security_event_count }}</p>
+      <p class="stat-hint"><a href="{{ url_for('admin.security') }}">Review monitoring &rarr;</a></p>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div><h2>Platform activity</h2><p>Uploads and registrations over the last 7 days</p></div>
+        <span class="chip"><i class="bi bi-activity"></i>Live data</span>
+      </div>
+      <div class="card-panel-body">
+        <div class="chart-box"><canvas id="adminChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div><h2>Recent security events</h2><p>Most recent alerts</p></div>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.security') }}">All events</a>
+      </div>
+      <div class="activity-feed">
+        {% for event in recent_events %}
+          <div class="activity-item">
+            <span class="activity-icon" style="background:#ffecef;color:#be123c;"><i class="bi bi-shield-exclamation"></i></span>
+            <div class="activity-body">
+              <p>{{ event.description }}</p>
+              <div class="activity-meta">
+                <span class="badge badge-soft-danger">{{ event.event_type|humanize }}</span>
+                <span>{{ event.timestamp|datetime }}</span>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="empty-state py-4">
+            <div class="empty-icon"><i class="bi bi-shield-check"></i></div>
+            <h5>No security events</h5>
+            <p>The system has not recorded any security alerts.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-panel-header">
+      <div><h2>Recent system activity</h2><p>Latest audited actions across all users</p></div>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard.activity_logs') }}">Open audit trail</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-modern align-middle">
+        <thead>
+          <tr><th>Timestamp</th><th>User</th><th>Action</th><th>Description</th><th>IP</th></tr>
+        </thead>
+        <tbody>
+          {% for item in recent_activities %}
+            <tr>
+              <td class="cell-nowrap cell-muted">{{ item.timestamp|datetime }}</td>
+              <td class="cell-nowrap">
+                {% if item.user %}
+                  <div class="user-cell">
+                    <span class="avatar" style="width:28px;height:28px;font-size:.6rem;">{{ item.user.initials }}</span>
+                    <span class="name">{{ item.user.username }}</span>
+                  </div>
+                {% else %}<span class="cell-muted">System</span>{% endif %}
+              </td>
+              <td>{{ action_badge(item.action) }}</td>
+              <td style="max-width:420px;">{{ item.description }}</td>
+              <td class="cell-nowrap cell-muted"><code style="font-size:.73rem;">{{ item.ip_address or '—' }}</code></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-4">No activity recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  if (window.Chart) {
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = '#64748b';
+    const canvas = document.getElementById('adminChart');
+    if (canvas) {
+      new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: {{ chart_labels|tojson }},
+          datasets: [
+            {
+              label: 'Uploads',
+              data: {{ chart_uploads|tojson }},
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59,130,246,.12)',
+              borderWidth: 2, fill: true, tension: .4, pointRadius: 3
+            },
+            {
+              label: 'Registrations',
+              data: {{ chart_users|tojson }},
+              borderColor: '#22c55e',
+              backgroundColor: 'rgba(34,197,94,.08)',
+              borderWidth: 2, fill: true, tension: .4, pointRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } },
+          scales: {
+            x: { grid: { display: false }, border: { display: false } },
+            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#eef2f7' }, border: { display: false } }
+          }
+        }
+      });
+    }
+  }
+</script>
+{% endblock %}

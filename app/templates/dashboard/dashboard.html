@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% from "_macros.html" import permission_badge, action_badge, empty_state %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Security overview</div>
+      <h1>Welcome back, {{ current_user.full_name.split()[0] }}</h1>
+      <p>Here is what is happening in your encrypted workspace.</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn btn-outline-secondary" href="{{ url_for('sharing.shared_with_me') }}">
+        <i class="bi bi-inbox me-1"></i>Shared with me
+      </a>
+      <a class="btn btn-primary" href="{{ url_for('files.upload') }}">
+        <i class="bi bi-cloud-arrow-up me-1"></i>Upload file
+      </a>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-top">
+        <span class="stat-label">My uploaded files</span>
+        <span class="stat-icon"><i class="bi bi-folder2-open"></i></span>
+      </div>
+      <p class="stat-value">{{ total_files }}</p>
+      <p class="stat-hint"><i class="bi bi-lock-fill me-1 text-success"></i>All stored encrypted</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top">
+        <span class="stat-label">Shared by me</span>
+        <span class="stat-icon green"><i class="bi bi-send"></i></span>
+      </div>
+      <p class="stat-value">{{ shared_by_me }}</p>
+      <p class="stat-hint">Active permission grants</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top">
+        <span class="stat-label">Shared with me</span>
+        <span class="stat-icon violet"><i class="bi bi-inbox"></i></span>
+      </div>
+      <p class="stat-value">{{ shared_with_me }}</p>
+      <p class="stat-hint">{{ view_count }} view-only · {{ download_count }} download</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top">
+        <span class="stat-label">Storage used</span>
+        <span class="stat-icon amber"><i class="bi bi-hdd"></i></span>
+      </div>
+      <p class="stat-value">{{ storage_used|filesizeformat }}</p>
+      <p class="stat-hint">Across your encrypted files</p>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div>
+          <h2>Upload activity</h2>
+          <p>Files uploaded over the last 7 days</p>
+        </div>
+        <span class="chip"><i class="bi bi-graph-up-arrow"></i> 7 days</span>
+      </div>
+      <div class="card-panel-body">
+        <div class="chart-box"><canvas id="uploadChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div>
+          <h2>Sharing overview</h2>
+          <p>Your active sharing relationships</p>
+        </div>
+      </div>
+      <div class="card-panel-body">
+        <div class="chart-box small"><canvas id="sharingChart"></canvas></div>
+        <div class="legend-list">
+          <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Shared by me <strong>{{ shared_by_me }}</strong></div>
+          <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Shared with me <strong>{{ shared_with_me }}</strong></div>
+          <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Download access received <strong>{{ download_count }}</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div>
+          <h2>Recent activity</h2>
+          <p>Your latest audited actions</p>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dashboard.activity_logs') }}">View all</a>
+      </div>
+      <div class="activity-feed">
+        {% for item in recent_activities %}
+          <div class="activity-item">
+            <span class="activity-icon"><i class="bi {{ {'upload':'bi-cloud-arrow-up','download':'bi-download','share':'bi-send','revoke':'bi-slash-circle','login':'bi-box-arrow-in-right','logout':'bi-box-arrow-right','delete':'bi-trash3','preview':'bi-eye','registration':'bi-person-plus'}.get(item.action, 'bi-activity') }}"></i></span>
+            <div class="activity-body">
+              <p>{{ item.description }}</p>
+              <div class="activity-meta">
+                {{ action_badge(item.action) }}
+                <span>{{ item.timestamp|datetime }}</span>
+                <span>{{ item.ip_address or 'unknown IP' }}</span>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="empty-state py-4">
+            <div class="empty-icon"><i class="bi bi-activity"></i></div>
+            <h5>No activity yet</h5>
+            <p>Your file and account actions will appear here.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="card-panel-header">
+        <div>
+          <h2>Recently shared with you</h2>
+          <p>Documents you can currently access</p>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('sharing.shared_with_me') }}">Open</a>
+      </div>
+      <div class="quick-share-list">
+        {% for perm in recent_shared %}
+          <div class="quick-share-item">
+            <span class="file-badge"><i class="bi {{ perm.file.original_filename|file_icon }}"></i></span>
+            <div class="quick-share-main">
+              <strong>{{ perm.file.original_filename }}</strong>
+              <span>{{ perm.owner.full_name }} · {{ perm.file.file_size|filesizeformat }}</span>
+            </div>
+            {{ permission_badge(perm.permission_type, perm.is_active) }}
+          </div>
+        {% else %}
+          <div class="empty-state py-4">
+            <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+            <h5>Nothing shared yet</h5>
+            <p>Files that other users share with you will show up here.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  if (window.Chart) {
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = '#64748b';
+
+    const uploadCanvas = document.getElementById('uploadChart');
+    if (uploadCanvas) {
+      new Chart(uploadCanvas, {
+        type: 'line',
+        data: {
+          labels: {{ chart_labels|tojson }},
+          datasets: [{
+            label: 'Files uploaded',
+            data: {{ chart_uploads|tojson }},
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.12)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#2563eb',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { displayColors: false } },
+          scales: {
+            x: { grid: { display: false }, border: { display: false } },
+            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#eef2f7' }, border: { display: false } }
+          }
+        }
+      });
+    }
+
+    const sharingCanvas = document.getElementById('sharingChart');
+    if (sharingCanvas) {
+      new Chart(sharingCanvas, {
+        type: 'doughnut',
+        data: {
+          labels: ['Shared by me', 'Shared with me', 'View-only received'],
+          datasets: [{
+            data: [{{ shared_by_me }}, {{ shared_with_me }}, {{ view_count }}],
+            backgroundColor: ['#3b82f6', '#8b5cf6', '#22c55e'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '68%',
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination, empty_state %}
+{% block title %}All Files{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Administration</div>
+      <h1>All Files</h1>
+      <p>System-wide metadata overview. Files remain encrypted and permission-controlled.</p>
+    </div>
+    <div class="header-actions">
+      <span class="chip"><i class="bi bi-database"></i>{{ pagination.total }} files</span>
+      <span class="chip"><i class="bi bi-hdd"></i>{{ total_storage|filesizeformat }} encrypted</span>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body py-3">
+      <form class="filter-bar" method="get" action="{{ url_for('admin.files') }}">
+        <div class="search-input">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Search file, owner or MIME type…">
+        </div>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search %}<a class="btn btn-outline-secondary" href="{{ url_for('admin.files') }}">Reset</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if files %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr><th>File</th><th>Owner</th><th>Size</th><th>Uploaded</th><th>Encryption</th><th>Recipients</th><th class="text-end">Action</th></tr>
+          </thead>
+          <tbody>
+            {% for file in files %}
+              <tr>
+                <td>
+                  <div class="file-cell">
+                    <span class="file-badge"><i class="bi {{ file.original_filename|file_icon }}"></i></span>
+                    <div>
+                      <a class="file-name" href="{{ url_for('files.detail', file_id=file.id) }}">{{ file.original_filename }}</a>
+                      <span class="file-sub">{{ file.mime_type }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="user-cell">
+                    <span class="avatar" style="width:28px;height:28px;font-size:.6rem;">{{ file.owner.initials }}</span>
+                    <div><span class="name">{{ file.owner.username }}</span><span class="sub">{{ file.owner.email }}</span></div>
+                  </div>
+                </td>
+                <td class="cell-nowrap cell-muted">{{ file.file_size|filesizeformat }}</td>
+                <td class="cell-nowrap cell-muted">{{ file.uploaded_at|day }}</td>
+                <td><span class="encryption-chip"><i class="bi bi-lock-fill"></i>{{ file.encryption_status }}</span></td>
+                <td class="cell-nowrap"><span class="badge badge-soft-info"><i class="bi bi-people me-1"></i>{{ file.active_permissions_count }}</span></td>
+                <td>
+                  <div class="row-actions">
+                    <a class="btn-icon-soft" href="{{ url_for('files.detail', file_id=file.id) }}" title="View metadata"><i class="bi bi-info-circle"></i></a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-3 pb-3">{{ render_pagination(pagination, 'admin.files', {'q': search}) }}</div>
+    {% else %}
+      {{ empty_state('bi-database-lock', 'No files uploaded', 'No files match the current filters.', url_for('admin.files'), 'Clear filters') }}
+    {% endif %}
+  </div>
+
+  <div class="security-callout warning mt-3">
+    <i class="bi bi-shield-exclamation"></i>
+    <div>
+      <strong>Administrator scope</strong>
+      Administrators can review metadata for oversight, but downloads and previews still require file ownership or an active owner-granted permission. Administrative access is explicitly logged.
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination, empty_state %}
+{% block title %}Manage Permissions{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Access control</div>
+      <h1>Manage Permissions</h1>
+      <p>Choose a file to review, change or revoke the access you have granted.</p>
+    </div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body py-3">
+      <form class="filter-bar" method="get" action="{{ url_for('sharing.permissions_index') }}">
+        <div class="search-input">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Search your files…">
+        </div>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search %}<a class="btn btn-outline-secondary" href="{{ url_for('sharing.permissions_index') }}">Reset</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if files %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Size</th>
+              <th>Uploaded</th>
+              <th>Active recipients</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for file in files %}
+              <tr>
+                <td>
+                  <div class="file-cell">
+                    <span class="file-badge"><i class="bi {{ file.original_filename|file_icon }}"></i></span>
+                    <div>
+                      <a class="file-name" href="{{ url_for('sharing.permissions', file_id=file.id) }}">{{ file.original_filename }}</a>
+                      <span class="file-sub">{{ file.mime_type }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="cell-nowrap cell-muted">{{ file.file_size|filesizeformat }}</td>
+                <td class="cell-nowrap cell-muted">{{ file.uploaded_at|day }}</td>
+                <td>
+                  <span class="badge badge-soft-{{ 'success' if file.active_permissions_count else 'secondary' }}">
+                    <i class="bi bi-people me-1"></i>{{ file.active_permissions_count }} active
+                  </span>
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <a class="btn btn-sm btn-soft" href="{{ url_for('sharing.share', file_id=file.id) }}"><i class="bi bi-send me-1"></i>Share</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('sharing.permissions', file_id=file.id) }}"><i class="bi bi-key me-1"></i>Manage</a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-3 pb-3">{{ render_pagination(pagination, 'sharing.permissions_index', {'q': search}) }}</div>
+    {% else %}
+      {{ empty_state('bi-key', 'No files to manage' if not search else 'No matching files',
+        'Upload a file first, then you can grant and revoke access from here.' if not search else 'Try a different search term.',
+        url_for('files.upload') if not search else url_for('sharing.permissions_index'), 'Upload a file' if not search else 'Clear search') }}
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_pagination, empty_state %}
+{% block title %}User Management{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Administration</div>
+      <h1>User Management</h1>
+      <p>Review accounts and activate or deactivate access. Administrators cannot deactivate themselves.</p>
+    </div>
+    <div class="header-actions"><span class="chip"><i class="bi bi-people"></i>{{ pagination.total }} accounts</span></div>
+  </div>
+
+  <div class="card-panel mb-3">
+    <div class="card-panel-body py-3">
+      <form class="filter-bar" method="get" action="{{ url_for('admin.users') }}">
+        <div class="search-input">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Search name, username or email…">
+        </div>
+        <select class="form-select" name="status" style="max-width:190px;">
+          <option value="">All accounts</option>
+          <option value="active" {{ 'selected' if status == 'active' }}>Active only</option>
+          <option value="inactive" {{ 'selected' if status == 'inactive' }}>Deactivated only</option>
+          <option value="admin" {{ 'selected' if status == 'admin' }}>Administrators</option>
+        </select>
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search or status %}<a class="btn btn-outline-secondary" href="{{ url_for('admin.users') }}">Reset</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    {% if users %}
+      <div class="table-responsive">
+        <table class="table table-modern align-middle">
+          <thead>
+            <tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th>Last sign-in</th><th class="text-end">Action</th></tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    <span class="avatar" style="width:32px;height:32px;font-size:.64rem;">{{ user.initials }}</span>
+                    <div>
+                      <span class="name">{{ user.full_name }}</span>
+                      <span class="sub">@{{ user.username }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td class="cell-muted">{{ user.email }}</td>
+                <td>
+                  <span class="badge badge-soft-{{ 'warning' if user.is_admin else 'primary' }}">
+                    <i class="bi bi-{{ 'shield-check' if user.is_admin else 'person' }} me-1"></i>{{ 'Admin' if user.is_admin else 'User' }}
+                  </span>
+                </td>
+                <td>
+                  {% if user.is_active %}
+                    <span class="badge badge-soft-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                  {% else %}
+                    <span class="badge badge-soft-danger"><i class="bi bi-x-circle me-1"></i>Deactivated</span>
+                  {% endif %}
+                </td>
+                <td class="cell-nowrap cell-muted">{{ user.created_at|day }}</td>
+                <td class="cell-nowrap cell-muted">{{ user.last_login_at|datetime if user.last_login_at else 'Never' }}</td>
+                <td>
+                  <div class="row-actions">
+                    {% if user.id == current_user.id %}
+                      <span class="chip"><i class="bi bi-person-check"></i>You</span>
+                    {% else %}
+                      <form method="post" action="{{ url_for('admin.toggle_user', user_id=user.id) }}" data-confirm="{{ 'Deactivate' if user.is_active else 'Activate' }} account '{{ user.username }}'?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% if user.is_active %}
+                          <button class="btn btn-sm btn-danger-soft" type="submit"><i class="bi bi-pause-circle me-1"></i>Deactivate</button>
+                        {% else %}
+                          <button class="btn btn-sm btn-soft" type="submit"><i class="bi bi-play-circle me-1"></i>Activate</button>
+                        {% endif %}
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-3 pb-3">{{ render_pagination(pagination, 'admin.users', {'q': search, 'status': status}) }}</div>
+    {% else %}
+      {{ empty_state('bi-people', 'No accounts found', 'No user accounts match the current filters.', url_for('admin.users'), 'Clear filters') }}
+    {% endif %}
+  </div>
+{% endblock %}
